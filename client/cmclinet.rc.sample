@@ -1,0 +1,79 @@
+# Chipmunk client configuration file.
+#
+# Some sections are required whereas others are optional based
+# on your particular use case.
+
+# WARNING---WARNING---WARNING---WARNING---WARNING---WARNING
+#
+# This file will contain sensetive information such as username,
+# password and API keys.  Be sure to set permissions and ownership
+# of this file appropriately to safe guard that information
+#
+# WARNING---WARNING---WARNING---WARNING---WARNING---WARNING
+
+[Global]
+# Settings needed for all use cases
+
+# update_dns:  yes or no.  Determines if a DNS provider is updated
+# with the client's IP.  If yes, then the [dDNS] section is needed
+update_dns = no
+
+# deamonize:  yes or no.  run as a daemon or just a signle run.  If
+# yes, then the [Daemon] section is needed.
+daemonize = no
+
+[ChipmunkAPIServer]
+# Chipmunk server details
+
+# username:  your username
+username = barney
+
+# password:  your password
+password = s3kR3T
+
+# method:  API method.
+# Options include:
+#   - get (returns client's IP)
+#   - set (returns the client's IP and tells the server to
+    store that information for other uses)
+method = get
+
+# endpoint:  URL to the chipmunk api
+endpoint = https://api.chipmunkserver.tld:8080
+
+#
+# optional sections
+#
+
+[Daemon]
+# If daemonize is set to yes in the global section, the following are needed.
+
+# interval:  (seconds) how long to pause between runs of getting your IP
+# address.  If you are updating DNS with the deamon, calls to the DNS provider
+# happen in series with the IP address checks.  Many APIs for DNS providers
+# have a rate limit, so you want to ensure that this interval isn't too
+# frequent as to hit those rate limits
+interval = 300
+
+# pidfile:  full path and name of the PID file to create
+pidfile = /var/run/chipmunkclient.pid
+
+# logfile:  full path and name of the log file for output.
+logfile = /var/log/chipmunkclient.log
+
+[dDNS]
+# if update_dns is set, this determines the DNS provider used.  A corresponding
+# section with DNS provider API information is also required.  Typically the
+# name of that section is the same as that of the provider listed here.
+provider = linode
+
+[linode]
+# Information needed to connect to Linode's DNS API and update a record.
+# The sample below is would be used to update the DNS record for
+# the FQDN myhouse.cooldomain.com
+
+# Get your API key from linode
+api_key = 311905cb27e82d67f4f6511f7f
+host = myhouse
+domain = cooldomain.com
+endpoint = https://api.linode.com

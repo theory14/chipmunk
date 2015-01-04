@@ -1,0 +1,31 @@
+#
+# need this global
+#
+WSGISocketPrefix /var/run/
+
+#
+# http vhost
+#
+<VirtualHost *:4242>
+    ServerName api.theory14.net
+    WSGIDaemonProcess apiv1 user=apache group=apache processes=1 threads=5
+    WSGIScriptAlias / /www/api.theory14.net/app/chipmunkapi.wsgi
+    WSGIPassAuthorization On
+
+    CustomLog /www/api.theory14.net/logs/access.log combined
+    ErrorLog /www/api.theory14.net/logs/error.log
+
+   # SSL Fun
+    SSLEngine on
+    SSLCipherSuite ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP
+    SSLCertificateFile /etc/pki/tls/http/api.theory14.net/cert.pem
+    SSLCertificateKeyFile /etc/pki/tls/http/api.theory14.net/key.pem
+
+    <Directory /www/api.theory14.net/app>
+        WSGIProcessGroup apiv1
+        WSGIApplicationGroup %{GLOBAL}
+        Order deny,allow
+        Allow from all
+    </Directory>
+</VirtualHost>
+
