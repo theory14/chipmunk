@@ -14,6 +14,8 @@ import atexit
 import signal
 import logging
 
+# maps a dynamic DNS provider name (used in the config file)
+# to the name of the class that supports it)
 DNS_PROVIDER_MAP = {'linode': 'LinodeDNS'}
 
 # This class from

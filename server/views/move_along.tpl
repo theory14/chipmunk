@@ -1,8 +1,9 @@
 <html>
 <head>
-<title>Nothing to see here, move along.</title>
+<title>This isn't htepage you're looking for. Move along!</title>
 </head>
 <body>
-<img src="/img/move-along.jpg" alt="Nothing to see here.">
+<p>This isn't the page you're looking for.  Move along!</p>
+<p>404</p>
 </body>
 </html>

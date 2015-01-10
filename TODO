@@ -1,2 +1,5 @@
+- Use different 404 image
 - Document everything!!!!
+- Pythonista client to allow mobile usage
 - Use something other than text files to store 'set' addresses.
+- Fix ChipmunkRequest() class to allow reconfiguration of parameters

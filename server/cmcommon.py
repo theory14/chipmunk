@@ -1,5 +1,6 @@
 import ConfigParser
 import os
+import sys
 
 class Config(object):
     """

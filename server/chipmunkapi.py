@@ -8,7 +8,7 @@ import cmcommon
 import sys
 
 # default config file
-CONFIG_FILE = 'chipmunkapi.rc'
+CONFIG_FILE = 'chipmunkapi.ini'
 
 try:
     conf = cmcommon.Config(CONFIG_FILE)
