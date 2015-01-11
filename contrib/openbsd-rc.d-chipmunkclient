@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# OpenBSD rc.d script
+
+daemon="/usr/local/sbin/chipmunkclient"
+daemon_flags="-c /usr/local/etc/chipmunkclient.ini"
+
+. /etc/rc.d/rc.subr
+
+pexp=".*python.* ${daemon}"
+
+rc_cmd $1

@@ -587,7 +587,7 @@ class CMDaemon(Daemon):
 
         self.conf = conf
         self.cm = ChipmunkRequest(self.conf.cmapi)
-        self.dnupate = None
+        self.dnupdate = None
         if self.conf.update_dns:
             self.dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
             self.dnupdate.configure(self.conf.dns_params)
@@ -610,7 +610,7 @@ class CMDaemon(Daemon):
         self.cm.configure(self.conf.cmapi)
         if self.dnupdate:
             # if we have an object, just reconfigure it
-            self.dnupate.configure(self.conf.dns_params)
+            self.dnupdate.configure(self.conf.dns_params)
         elif self.conf.update_dns:
             # need to create the object
             self.dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
