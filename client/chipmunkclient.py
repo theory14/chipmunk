@@ -250,6 +250,15 @@ class ChipmunkRequest(object):
         else:
             self._endpoint = urlparse.urlunsplit(parsed_url)
 
+    def configure(self, config_dict):
+        """
+        comment
+        """
+        self.username = config_dict['username']
+        self.password = config_dict['password']
+        self.endpoint = config_dict['endpoint']
+        self.method =  config_dict['method']
+
     def get_ip(self):
         """
         Get the client's IP address from the Chipmunk API Server.  The purpose
@@ -575,12 +584,19 @@ class CMDaemon(Daemon):
         Args:
             conf:  a Config object with everything initialized
         """
+
         self.conf = conf
-        super(CMDaemon, self).__init__(self.conf.daemon['pidfile'])
+        self.cm = ChipmunkRequest(self.conf.cmapi)
+        self.dnupate = None
+        if self.conf.update_dns:
+            self.dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
+            self.dnupdate.configure(self.conf.dns_params)
         self.logger = Logger(self.conf.daemon['logfile'])
-        # register a handler for SIGHUP to re-load the configuration
+
+        super(CMDaemon, self).__init__(self.conf.daemon['pidfile'])
+
+        # register signal handlers
         signal.signal(signal.SIGHUP, self._sighup_handler)
-        # cleanly die
         signal.signal(signal.SIGTERM, self._sigterm_handler)
         signal.signal(signal.SIGUSR1, self._sigusr1_handler)
 
@@ -588,8 +604,18 @@ class CMDaemon(Daemon):
         """
         Handle a SIGHUP by reloading the config.
         """
+
         self.logger.log('info', 'Reloading Configuration.')
         self.conf.configure(self.conf.config_file)
+        self.cm.configure(self.conf.cmapi)
+        if self.dnupdate:
+            # if we have an object, just reconfigure it
+            self.dnupate.configure(self.conf.dns_params)
+        elif self.conf.update_dns:
+            # need to create the object
+            self.dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
+            self.dnupdate.configure(self.conf.dns_params)
+
 
     def _sigusr1_handler(self, signum, frame):
         """
@@ -607,16 +633,12 @@ class CMDaemon(Daemon):
         logic in here.
         """
         self.logger.log('info', 'Starting.')
-        cm = ChipmunkRequest(self.conf.cmapi)
-        if self.conf.update_dns:
-                dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
-                dnupdate.configure(self.conf.dns_params)
 
         while True:
-            cm.get_ip()
-            self.logger.log('info', 'Current IP is: %s ' % cm.my_ip)
+            self.cm.get_ip()
+            self.logger.log('info', 'Current IP is: %s ' % self.cm.my_ip)
             if self.conf.update_dns:
-                message = dnupdate.update_dns(cm.my_ip)
+                message = self.dnupdate.update_dns(self.cm.my_ip)
                 self.logger.log('info', 'DNS Update Status:  %s' % message)
             # sleep for a period of time before checking again.
             time.sleep(int(self.conf.daemon['interval']))
