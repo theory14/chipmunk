@@ -608,14 +608,16 @@ class CMDaemon(Daemon):
         """
         self.logger.log('info', 'Starting.')
         cm = ChipmunkRequest(self.conf.cmapi)
+        if self.conf.update_dns:
+                dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
+                dnupdate.configure(self.conf.dns_params)
+
         while True:
             cm.get_ip()
             self.logger.log('info', 'Current IP is: %s ' % cm.my_ip)
             if self.conf.update_dns:
-                dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
-                dnupdate.configure(self.conf.dns_params)
-                dnupdate.update_dns(cm.my_ip)
-                self.logger.log('info', 'Updated DNS with new IP:  %s' % cm.my_ip)
+                message = dnupdate.update_dns(cm.my_ip)
+                self.logger.log('info', 'DNS Update Status:  %s' % message)
             # sleep for a period of time before checking again.
             time.sleep(int(self.conf.daemon['interval']))
 
