@@ -220,6 +220,9 @@ class ChipmunkRequest(object):
         # the return value from the server
         self.my_ip = None
         self.status = None
+        # determin if we have a new IP address.  Initially set to true
+        # since we don't know what our "old" address was when we start up.
+        self.have_new_ip = True
 
     @property
     def method(self):
@@ -284,6 +287,13 @@ class ChipmunkRequest(object):
             print >> sys.stderr, 'Error connecting to Chipmunk API:  ' + str(e.reason)
             sys.exit(1)
         answer = json.loads(answer)
+        ip = answer['Client_IP']
+        # if we already have an IP stored, see if we have a new one
+        if self.my_ip:
+            if ip == self.my_ip:
+                self.have_new_ip = False
+            else:
+                self.have_new_ip = True
         self.my_ip = answer['Client_IP']
         if self.method == 'set':
             self.status = answer['status']
@@ -638,8 +648,9 @@ class CMDaemon(Daemon):
             self.cm.get_ip()
             self.logger.log('info', 'Current IP is: %s ' % self.cm.my_ip)
             if self.conf.update_dns:
-                message = self.dnupdate.update_dns(self.cm.my_ip)
-                self.logger.log('info', 'DNS Update Status:  %s' % message)
+                if self.cm.have_new_ip:
+                    message = self.dnupdate.update_dns(self.cm.my_ip)
+                    self.logger.log('info', 'DNS Update Status:  %s' % message)
             # sleep for a period of time before checking again.
             time.sleep(int(self.conf.daemon['interval']))
 
