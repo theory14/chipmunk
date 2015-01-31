@@ -213,10 +213,10 @@ class ChipmunkRequest(object):
 
         Args:
             config_dict:  dictionary containing the following keys:
-                username:  string for username on chipmunkapi server
-                password:  string for password on chipmunkapi server
-                server:  API endpoint URL
-                method:  method to call on the endpoint
+            username:  string for username on chipmunkapi server
+            password:  string for password on chipmunkapi server
+            server:  API endpoint URL
+            method:  method to call on the endpoint
 
         """
         self.username = config_dict['username']
@@ -268,21 +268,6 @@ class ChipmunkRequest(object):
         self.password = config_dict['password']
         self.endpoint = config_dict['endpoint']
         self.method =  config_dict['method']
-
-    # def _display_error(self, level, message):
-    #     """
-    #     Wrapper around writing error messages.  If running as a daemon,
-    #     self.logger is set, so log to the log file, otherwise write to
-    #     stderr.
-
-    #     Args:
-    #         level:  error level.  See Logger() for options.
-    #         message:  error message to log/display.
-    #     """
-    #     if self.logger:
-    #         self.logger.log(level, message)
-    #     else:
-    #         print >> sys.stderr, '%s: %s' % (level, message)
 
     def get_ip(self):
         """
@@ -366,6 +351,9 @@ class DNSProvider(object):
         """
         Make update to DNS entry
 
+        Should raise CMError() exceptions for problems with the connection or
+        data.  The calling routine should handle this error appropriately.
+
         Returns:
             String suitable for display to end user indicating status of
             the update
@@ -398,12 +386,6 @@ class DNSProvider(object):
         """
         raise NotImplementedError
 
-class ChipmunkDNSUpdateError(Exception):
-    """
-    Custom Exception for errors in updating Dynamic DNS.
-    """
-    pass
-
 class LinodeDNS(DNSProvider):
     """
     Impliment Linode DNS update
@@ -432,6 +414,9 @@ class LinodeDNS(DNSProvider):
     def update_dns(self, new_ip_addr):
         """
         Perform DNS update.
+
+        Any connection errors are raised as CMError() exceptions.  These
+        should be handled appropriately when ths method is called.
 
         Args:
             new_ip_addr:  string with the new IP address to set
@@ -506,22 +491,6 @@ class LinodeDNS(DNSProvider):
                   'Target': new_ip}
         data = self._make_api_call(method)
         return data['ResourceID']
-
-
-    # def _display_error(self, level, message):
-    #     """
-    #     Wrapper around writing error messages.  If running as a daemon,
-    #     self.logger is set, so log to the log file, otherwise write to
-    #     stderr.
-
-    #     Args:
-    #         level:  error level.  See Logger() for options.
-    #         message:  error message to log/display.
-    #     """
-    #     if self.logger:
-    #         self.logger.log(level, message)
-        # else:
-        #     print >> sys.stderr, '%s: %s' % (level, message)
 
     def _make_api_call(self, query_dict):
         """
