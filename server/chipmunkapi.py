@@ -115,7 +115,6 @@ def error_404(error):
     """
     Custom 404 error response.
     """
-    print error
     return bottle.template('move_along.tpl')
 
 

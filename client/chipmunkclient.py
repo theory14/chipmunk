@@ -223,6 +223,7 @@ class ChipmunkRequest(object):
         # determin if we have a new IP address.  Initially set to true
         # since we don't know what our "old" address was when we start up.
         self.have_new_ip = True
+        self.logger = None
 
     @property
     def method(self):
@@ -262,6 +263,21 @@ class ChipmunkRequest(object):
         self.endpoint = config_dict['endpoint']
         self.method =  config_dict['method']
 
+    def _display_error(self, level, message):
+        """
+        Wrapper around writing error messages.  If running as a daemon,
+        self.logger is set, so log to the log file, otherwise write to
+        stderr.
+
+        Args:
+            level:  error level.  See Logger() for options.
+            message:  error message to log/display.
+        """
+        if self.logger:
+            self.logger.log(level, message)
+        else:
+            print >> sys.stderr, '%s: %s' % (level, message)
+
     def get_ip(self):
         """
         Get the client's IP address from the Chipmunk API Server.  The purpose
@@ -272,6 +288,8 @@ class ChipmunkRequest(object):
         Returns:
             IP address as a string
         """
+        # initially set ip to self.my_ip to put at a known good starting point
+        ip = self.my_ip
         url = self.endpoint + '/' + self.method
         try:
             request = urllib2.Request(url)
@@ -280,23 +298,25 @@ class ChipmunkRequest(object):
             request.add_header('User-Agent', 'Chipmunk Client')
             result = urllib2.urlopen(request)
             answer = result.read()
+            answer = json.loads(answer)
+            ip = answer['Client_IP']
+            if self.method == 'set':
+                self.status = answer['status']
         except urllib2.HTTPError as e:
-            print >> sys.stderr, 'Error connecting to Chipmunk API:  ' + str(e)
-            sys.exit(1)
+            message = 'Error connecting to Chipmunk API:  ' + str(e)
+            self._display_error('error', message)
         except urllib2.URLError as e:
-            print >> sys.stderr, 'Error connecting to Chipmunk API:  ' + str(e.reason)
-            sys.exit(1)
-        answer = json.loads(answer)
-        ip = answer['Client_IP']
+            message = 'Error connecting to Chipmunk API:  ' + str(e.reason)
+            self._display_error('error', message)
+
         # if we already have an IP stored, see if we have a new one
         if self.my_ip:
             if ip == self.my_ip:
                 self.have_new_ip = False
             else:
                 self.have_new_ip = True
-        self.my_ip = answer['Client_IP']
-        if self.method == 'set':
-            self.status = answer['status']
+        # finally set the new ip as our ip
+        self.my_ip = ip
         return self.my_ip
 
     @staticmethod
@@ -331,6 +351,7 @@ class DNSProvider(object):
     DNS providers.
     """
     def __init__(self):
+        self.logger = None
         raise NotImplementedError
 
     def update_dns(self):
@@ -389,6 +410,8 @@ class LinodeDNS(DNSProvider):
         self.domain_id = None
         self.resource_id = None
         self.linode_ip = None
+        self.logger = None
+
 
     def configure(self, config_data):
         """
@@ -411,8 +434,11 @@ class LinodeDNS(DNSProvider):
         self.resource_id = self._get_resource_id()
         self.linode_ip = self._get_linode_ip()
         if new_ip_addr != self.linode_ip:
-            self._set_linode_ip(new_ip_addr)
-            return 'Success'
+            status = self._set_linode_ip(new_ip_addr)
+            if status:
+                return 'Success'
+            else:
+                return 'Problem making update'
         else:
             return 'No Update Needed'
 
@@ -427,9 +453,12 @@ class LinodeDNS(DNSProvider):
             return self.domain_id
         method = {'api_action': 'domain.list'}
         data = self._make_api_call(method)
-        for entry in data:
-            if entry['DOMAIN'] == self.domain:
-                return entry['DOMAINID']
+        if data:
+            for entry in data:
+                if entry['DOMAIN'] == self.domain:
+                    return entry['DOMAINID']
+        else:
+            return None
 
     def _get_resource_id(self):
         """
@@ -443,9 +472,12 @@ class LinodeDNS(DNSProvider):
         method = {'api_action' : 'domain.resource.list',
                    'DomainID' : self.domain_id}
         data = self._make_api_call(method)
-        for entry in data:
-            if entry['NAME'] == self.host:
-                return entry['RESOURCEID']
+        if data:
+            for entry in data:
+                if entry['NAME'] == self.host:
+                    return entry['RESOURCEID']
+        else:
+            return None
 
     def _get_linode_ip(self):
         """
@@ -457,9 +489,12 @@ class LinodeDNS(DNSProvider):
         method = {'api_action' : 'domain.resource.list',
                    'DomainID' : self.domain_id}
         data = self._make_api_call(method)
-        for entry in data:
-            if entry['NAME'] == self.host:
-                return entry['TARGET']
+        if data:
+            for entry in data:
+                if entry['NAME'] == self.host:
+                    return entry['TARGET']
+        else:
+            return None
 
     def _set_linode_ip(self, new_ip):
         """
@@ -473,7 +508,25 @@ class LinodeDNS(DNSProvider):
                   'DomainID' : self.domain_id,
                   'Target': new_ip}
         data = self._make_api_call(method)
-        return data['ResourceID']
+        if data:
+            return data['ResourceID']
+        else:
+            return None
+
+    def _display_error(self, level, message):
+        """
+        Wrapper around writing error messages.  If running as a daemon,
+        self.logger is set, so log to the log file, otherwise write to
+        stderr.
+
+        Args:
+            level:  error level.  See Logger() for options.
+            message:  error message to log/display.
+        """
+        if self.logger:
+            self.logger.log(level, message)
+        else:
+            print >> sys.stderr, '%s: %s' % (level, message)
 
     def _make_api_call(self, query_dict):
         """
@@ -487,19 +540,32 @@ class LinodeDNS(DNSProvider):
         """
         method = urllib.urlencode(query_dict)
         url = self.endpoint + '/?api_key=' + self.api_key + '&' + method
+        answer = None
         try:
             request = urllib2.Request(url)
             result = urllib2.urlopen(request)
             answer = result.read()
-            answer = json.loads(answer)
         except urllib2.HTTPError as e:
-            print e
+            message = 'Error connecting to DNS provider: %s' % str(e)
+            self._display_error('warning', message)
+            return None
         except urllib2.URLError as e:
-            print e.reason
-        if len(answer['ERRORARRAY']) != 0:
-            raise ChipmunkDNSUpdateError(answer['ERRORARRAY']['ERRORMESSAGE'])
-        else:
-            return answer['DATA']
+            message = 'Error connecting to DNS provider: %s' % str(e.reason)
+            self._display_error('warning', message)
+            return None
+
+        try:
+            answer = json.loads(answer)
+        except ValueError as e:
+            return None
+
+        if answer:
+            if len(answer['ERRORARRAY']) != 0:
+                message = (answer['ERRORARRAY']['ERRORMESSAGE'])
+                self._display_error('error', message)
+            else:
+                return answer['DATA']
+
 
     @staticmethod
     def get_config_params(configp_dict):
@@ -602,6 +668,8 @@ class CMDaemon(Daemon):
             self.dnupdate = globals()[DNS_PROVIDER_MAP[self.conf.dns_provider]]()
             self.dnupdate.configure(self.conf.dns_params)
         self.logger = Logger(self.conf.daemon['logfile'])
+        self.cm.logger = self.logger
+        self.dnupdate.logger = self.logger
 
         super(CMDaemon, self).__init__(self.conf.daemon['pidfile'])
 
@@ -651,6 +719,11 @@ class CMDaemon(Daemon):
                 if self.cm.have_new_ip:
                     message = self.dnupdate.update_dns(self.cm.my_ip)
                     self.logger.log('info', 'DNS Update Status:  %s' % message)
+                    # there was a problem wtih the update, so set current IP to
+                    # somethig it can never really be to force a DNS update the
+                    # next time around.
+                    if message != 'Success':
+                        self.cm.my_ip = '0.0.0.0'
             # sleep for a period of time before checking again.
             time.sleep(int(self.conf.daemon['interval']))
 
