@@ -60,19 +60,45 @@ class ClientData(object):
         # where to write stuff
         self.dest_dir = config.client_update_dir
 
+    def _get_stored_addr(self, filename):
+        """
+        Get the content of the file, otherwise return none.
+
+        args:
+            filename:  name of the file whose contents to retrieve.
+
+        returns:  contents of file or None.
+        """
+        try:
+            fh = open(filename, 'r')
+            contents = fh.read()
+            fh.close
+        except IOError:
+            return None
+        return contents.strip().strip('\n')
+
     def persist_info(self, user, ip):
         """
-        Write IP address info to a file named <user>.cm
+        Write IP address info to a file named <user>.cm.  Only write the file
+        if either the file doesn't exist or if there is new data in the file.
+        If there is an update, also drop a file named "updated" into the same
+        directory.
 
         Args:
             user:  username
             ip:  client's IP
         """
         filename = self.dest_dir + '/' + user + '.cm'
-        fh = open(filename, 'w')
-        fh.write(ip)
-        fh.write('\n')
-        fh.close()
+        if ip != self._get_stored_addr(filename):
+            # we have new data to store
+            fh = open(filename, 'w')
+            fh.write(ip)
+            fh.write('\n')
+            fh.close()
+            # now also create the 'updated' file flag
+            updated_file_name = self.dest_dir + '/updated'
+            fh = open(updated_file_name, 'w')
+            fh.close()
 
 
 
