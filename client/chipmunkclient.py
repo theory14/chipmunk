@@ -13,6 +13,7 @@ import time
 import atexit
 import signal
 import logging
+import ssl
 
 # maps a dynamic DNS provider name (used in the config file)
 # to the name of the class that supports it)
@@ -287,7 +288,18 @@ class ChipmunkRequest(object):
             creds = base64.encodestring('%s:%s' % (self.username, self.password)).strip()
             request.add_header('Authorization', 'Basic %s' % creds)
             request.add_header('User-Agent', 'Chipmunk Client')
-            result = urllib2.urlopen(request)
+            # In 2.7.9, changes where made to validate certs by default.  This
+            # is obviously a "good" thing, but I want/need to mirror the
+            # non-validating behavior of < 2.7.9.  Eventually this should be
+            # a config option, but for now, here is some evil to undo the good
+            # of validation.
+            if sys.version_info.micro >= 9:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                result = urllib2.urlopen(request, context=ctx)
+            else:
+                 result = urllib2.urlopen(request)
             answer = result.read()
             answer = json.loads(answer)
         except urllib2.HTTPError as e:
