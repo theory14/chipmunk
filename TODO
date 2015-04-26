@@ -1,5 +1,5 @@
-- Pythonista client to allow mobile usage
 - Use something other than text files to store 'set' addresses.
 - Test cases
 - Handle 401 errors better in the client (right now it just exists, could
 probably do something better -- just not sure what yet.)
+- Make certificate validation a config option

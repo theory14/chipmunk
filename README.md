@@ -100,6 +100,12 @@ specified and the appropriate sections of the file setup.  The included
 `sample-cmclient.ini` is commented with the details of how to configure
 the client.
 
+If you are conencting over HTTPS, certificates are not validated.  This is the
+standard behvior in python < 2.7.9.  In 2.7.9, this was changed to default to
+validating certs.  Though this is a good thing, the chipmunk client simply
+mirrors the non-validating behavior.  This needs to be made into a config
+option.
+
 ## DNS Update Support
 
 If `update_dns` is set in the `[Global]` section, then a DNS provider will be
